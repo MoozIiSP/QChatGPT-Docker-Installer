@@ -42,7 +42,7 @@ ENV UMASK=002
 
 COPY --from=builder /build/cqhttp/cqhttp /app/
 
-ENV URL=https://github.com/RockChinQ/QChatGPT
+# ENV URL=https://github.com/RockChinQ/QChatGPT
 
 WORKDIR /bot
 #RUN sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories \
@@ -50,10 +50,11 @@ RUN apk add --update --no-cache unzip build-base zlib-dev ncurses-dev gdbm-dev o
     && python -m pip install --upgrade pip \
     && pip install colorlog func-timeout openai websockets yiri-mirai \
     && pip install websockets --upgrade
-CMD nohup python main.py > log 2>&1 &
+RUN git clone https://github.com/RockChinQ/QChatGPT.git
+#CMD nohup python main.py > log 2>&1 &
 
 WORKDIR /data
 
 VOLUME [ "/data" ]
 
-ENTRYPOINT [ "/docker-entrypoint.sh" ]
+#ENTRYPOINT [ "/docker-entrypoint.sh" ]
