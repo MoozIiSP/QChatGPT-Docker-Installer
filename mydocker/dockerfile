@@ -1,0 +1,59 @@
+FROM golang:1.20-alpine AS builder
+
+RUN apk add git && \
+  git clone https://github.com/Mrs4s/go-cqhttp.git /build/cqhttp
+
+WORKDIR /build/cqhttp
+
+RUN go env -w GO111MODULE=auto \
+  && go env -w CGO_ENABLED=0 \
+  && go env -w GOPROXY=https://goproxy.cn,direct
+
+COPY ./ .
+
+RUN set -ex \
+    && cd /build/cqhttp \
+    && go build -ldflags "-s -w -extldflags '-static'" -o cqhttp
+
+FROM python:3.9-alpine
+
+COPY --from=builder /build/cqhttp/docker-entrypoint.sh /docker-entrypoint.sh
+
+RUN chmod +x /docker-entrypoint.sh && \
+      apk add --no-cache --update \
+      ffmpeg \
+      coreutils \
+      shadow \
+      bash \
+      su-exec && \
+    rm -rf /var/cache/apk/* && \
+    mkdir -p /app && \
+    mkdir -p /data && \
+    mkdir -p /config && \
+    useradd -d /config -s /bin/sh abc && \
+    chown -R abc /config && \
+    chown -R abc /data
+
+ENV TZ="Asia/Shanghai"
+# variable to set
+ENV UID=568
+ENV GID=568
+ENV UMASK=002
+
+COPY --from=builder /build/cqhttp/cqhttp /app/
+
+ENV URL=https://github.com/RockChinQ/QChatGPT
+
+WORKDIR /bot
+#RUN sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories \
+RUN apk add --update --no-cache unzip build-base zlib-dev ncurses-dev gdbm-dev openssl-dev readline-dev sqlite-dev libffi-dev wget git bzip2-dev \
+    && python -m pip install --upgrade pip \
+    && pip install colorlog func-timeout openai websockets yiri-mirai \
+    && pip install websockets --upgrade
+CMD nohup python main.py > log 2>&1 &
+
+WORKDIR /data
+
+VOLUME [ "/data" ]
+
+ENTRYPOINT [ "/docker-entrypoint.sh" ]
